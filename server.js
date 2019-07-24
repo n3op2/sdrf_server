@@ -2,13 +2,18 @@
 const mongoose = require('mongoose');
 const express = require('express');
 const app = express();
+const cors = require('cors');
 const stdin = process.openStdin();
 
 mongoose.connect('mongodb://127.0.0.1:27017/sdrf', { useNewUrlParser: true});
 
 const freqSchema = new mongoose.Schema({ 
+  date: String,
+  time: String,
+  hzLow: Number,
+  hzHigh: Number,
   samples: Number,
-  hzStep: Number,
+  step: Number,
   freqs: [],
   createdAt: Number, 
 });
@@ -21,20 +26,22 @@ stdin.on('data', (raw) => {
   const freqs = data.splice(6); 
   const params = data.splice(0, 6);
 
-  const date = params[0];
-  const time = params[1];
-  const hzLow = params[2];
-  const hzHigh = params[3];
-  const hzStep = params[4];
-  const samples = params[5];
-  const timestamp = new Date().getTime();
-  /*
-  Freqs.create({ createdAt: timestamp, freqs, samples, hzStep }, (err) => {
+  const sample = {
+    date: params[0],
+    time: params[1],
+    hzLow: params[2],
+    hzHigh: params[3],
+    step: params[5],
+    freqs,
+    createdAt: new Date().getTime() 
+  };
+
+  console.log(raw);
+
+  Freqs.create(sample, (err) => {
     if (err) return console.log(err);
-    console.log('new freqs have been added.');
+    console.log('database updated...');
   });
-  */
-  console.log('...');
 });
 
 // on pipe end: 
@@ -43,11 +50,16 @@ stdin.on('end', () => {
   // reader.readAsText();
 });
 
+// middleware
+app.use(cors());
+
 // root get 
 app.get('/', (req, res) => {
-  Freqs.find({}, (err, freqs) => {
+  Freqs.find({/*query*/}, (err, data) => {
     if (err) return res.send(err);
-    res.send(freqs);
+    // TODO should pick up a range from database with the range properties
+    // such as range, low hz, high hz for visualizing it
+    res.send(data.slice(Math.max(data.length - 50, 0)));
   });
 });
 
@@ -55,3 +67,4 @@ app.get('/', (req, res) => {
 app.listen(3010, () => {
   console.log('listening 3000');
 });
+

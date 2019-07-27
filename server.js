@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 const mongoose = require('mongoose');
+const WebSocket = require('ws');
 const express = require('express');
 const app = express();
 const cors = require('cors');
 const stdin = process.openStdin();
 
 mongoose.connect('mongodb://127.0.0.1:27017/sdrf', { useNewUrlParser: true});
+const ws = new WebSocket.Server({ port: 8080 }); 
+ws.on('connection', (s) => {
+  s.send('test');
+});
 
 const freqSchema = new mongoose.Schema({ 
   date: String,

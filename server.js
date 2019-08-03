@@ -7,10 +7,9 @@ const cors = require('cors');
 const stdin = process.openStdin();
 
 mongoose.connect('mongodb://127.0.0.1:27017/sdrf', { useNewUrlParser: true});
+
 const ws = new WebSocket.Server({ port: 8080 }); 
-ws.on('connection', (s) => {
-  s.send('test');
-});
+let socket;
 
 const freqSchema = new mongoose.Schema({ 
   date: String,
@@ -25,10 +24,20 @@ const freqSchema = new mongoose.Schema({
 
 const Freqs = mongoose.model('freqs', freqSchema);
 
-// main gatherer
+// TODO better way of setting connecting and parsing as var
+ws.on('connection', (s) => {
+  socket = s; 
+});
+
+// websocket close
+ws.on('close', () => {
+  console.log('closing connection');
+});
+
+// std input
 stdin.on('data', (raw) => {
   const data = raw.toString().split(',');
-  const freqs = data.splice(6); 
+  const freqs = data.splice(6);
   const params = data.splice(0, 6);
 
   const sample = {
@@ -38,14 +47,15 @@ stdin.on('data', (raw) => {
     hzHigh: params[3],
     step: params[5],
     freqs,
-    createdAt: new Date().getTime() 
+    createdAt: new Date().getTime()
   };
 
-  console.log(raw);
-
+  // Async/Await
   Freqs.create(sample, (err) => {
     if (err) return console.log(err);
     console.log('database updated...');
+    const sampleBuffer = Buffer.from(JSON.stringify(sample));
+    if (socket) socket.send(sampleBuffer);
   });
 });
 
